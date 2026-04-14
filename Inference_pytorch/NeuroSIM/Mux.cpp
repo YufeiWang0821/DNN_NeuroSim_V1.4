@@ -49,6 +49,12 @@ Mux::Mux(const InputParameter& _inputParameter, const Technology& _tech, const M
 }
 
 void Mux::Initialize(int _numInput, int _numSelection, double _resTg, bool _FPGA){
+	/* 
+	_numInput: mux的输入个数，2就是2-to-1 mux，4就是4-to-1 mux，以此类推
+	_numSelection: 这样的选择器并排放了多少个
+	_resTg: 模拟mux的目标传输门（Transmission Gate）的电阻，数字mux不需要这个参数
+	_FPGA: true的话是数字mux，false的话是模拟mux
+	*/
 	if (initialized)
 		cout << "[Mux] Warning: Already initialized!" << endl;
 
@@ -192,6 +198,7 @@ void Mux::CalculateArea(double _newHeight, double _newWidth, AreaModify _option)
 }
 
 void Mux::CalculateLatency(double _rampInput, double _capLoad, double numRead) {  // rampInput is from SL/BL, not fron EN signal
+	// _rampInput未被使用 _capLoad表示Mux输出端外接负载电容 numRead表示读操作的次数
 	if (!initialized) {
 		cout << "[Mux] Error: Require initialization first!" << endl;
 	} else {
@@ -215,6 +222,7 @@ void Mux::CalculateLatency(double _rampInput, double _capLoad, double numRead) {
 }
 
 void Mux::CalculatePower(double numRead) {
+	// numRead表示读操作的次数
 	if (!initialized) {
 		cout << "[Mux] Error: Require initialization first!" << endl;
 	} else {

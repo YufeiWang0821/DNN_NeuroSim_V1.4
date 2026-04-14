@@ -55,6 +55,8 @@ using namespace std;
 
 Param::Param() {
 	/***************************************** user defined design options and parameters *****************************************/
+	useObfuscation = true;
+
 	operationmode = 2;     		// 1: conventionalSequential (Use several multi-bit RRAM as one synapse)
 								// 2: conventionalParallel (Use several multi-bit RRAM as one synapse)
 

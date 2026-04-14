@@ -43,6 +43,8 @@ class Param {
 public:
 	Param();
 
+	bool useObfuscation; 
+
 	int operationmode, operationmodeBack, memcelltype, accesstype, transistortype, deviceroadmap;      		
 	
 	double heightInFeatureSizeSRAM, widthInFeatureSizeSRAM, widthSRAMCellNMOS, widthSRAMCellPMOS, widthAccessCMOS, minSenseVoltage;

@@ -182,6 +182,7 @@ public:
 	CurrentSenseAmp          rowCurrentSenseAmp;
 	Mux                      mux;
 	RowDecoder               muxDecoder;
+	Mux                      inputMux;
 	SwitchMatrix             slSwitchMatrix;
 	SwitchMatrix             blSwitchMatrix;
 	SwitchMatrix             wlSwitchMatrix;

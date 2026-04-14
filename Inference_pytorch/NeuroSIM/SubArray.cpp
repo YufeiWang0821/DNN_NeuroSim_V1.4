@@ -61,6 +61,7 @@ SubArray::SubArray(InputParameter& _inputParameter, Technology& _tech, MemCell& 
 						rowCurrentSenseAmp(_inputParameter, _tech, _cell),
 						mux(_inputParameter, _tech, _cell),
 						muxDecoder(_inputParameter, _tech, _cell),
+						inputMux(_inputParameter, _tech, _cell),
 						slSwitchMatrix(_inputParameter, _tech, _cell),
 						blSwitchMatrix(_inputParameter, _tech, _cell),
 						wlSwitchMatrix(_inputParameter, _tech, _cell),
@@ -402,6 +403,10 @@ void SubArray::Initialize(int _numRow, int _numCol, double _unitWireRes){  //ini
 				mux.Initialize(numInput, numColMuxed, resTg, FPGA);     
 				muxDecoder.Initialize(REGULAR_ROW, (int)ceil(log2(numColMuxed)), true, false);
 			}
+			if (numRow > 1 && param->useObfuscation) {
+				printf("SubArray.cpp inputMux initialize 1");
+				inputMux.Initialize(2, numRow, cell.resMemCellOn, FPGA);
+			}
 			if (SARADC) {
 				sarADC.Initialize(numCol/numColMuxed, pow(2, avgWeightBit), clkFreq, numReadCellPerOperationNeuro);
 			} else {
@@ -446,6 +451,10 @@ void SubArray::Initialize(int _numRow, int _numCol, double _unitWireRes){  //ini
 			if (numColMuxed>1) {
 				mux.Initialize(ceil(numCol/numColMuxed), numColMuxed, resTg, FPGA);       
 				muxDecoder.Initialize(REGULAR_ROW, (int)ceil(log2(numColMuxed)), true, false);
+			}
+			if (numRow > 1 && param->useObfuscation) {
+				printf("SubArray.cpp inputMux initialize 2");
+				inputMux.Initialize(2, numRow, cell.resMemCellOn, FPGA);
 			}
 			if (SARADC) {
 				sarADC.Initialize(numCol/numColMuxed, levelOutput, clkFreq, numReadCellPerOperationNeuro);
@@ -691,6 +700,10 @@ void SubArray::CalculateArea() {  //calculate layout area for total design
 					double minMuxHeight = MAX(muxDecoder.height, mux.height);
 					mux.CalculateArea(minMuxHeight, widthArray, OVERRIDE);
 				}
+				if (numRow > 1 && param->useObfuscation) {
+					printf("SubArray.cpp inputMux calculate area 1");
+					inputMux.CalculateArea(heightArray, NULL, NONE);
+				}
 				if (SARADC) {
 					sarADC.CalculateUnitArea();
 					sarADC.CalculateArea(NULL, widthArray, NONE);
@@ -711,15 +724,24 @@ void SubArray::CalculateArea() {  //calculate layout area for total design
 				}
 				height = ((cell.writeVoltage > 1.5)==true? (sllevelshifter.height):0) + slSwitchMatrix.height + heightArray + ((numColMuxed > 1)==true? (mux.height):0) + \
 						multilevelSenseAmp.height + multilevelSAEncoder.height + adder.height + dff.height + shiftAddInput.height + shiftAddWeight.height + sarADC.height;
+				if (numRow > 1 && param->useObfuscation) {
+					height += inputMux.height;
+				}
 				width = MAX( ((cell.writeVoltage > 1.5)==true? (wllevelshifter.width + bllevelshifter.width):0) + wlDecoder.width + wlNewDecoderDriver.width + wlDecoderDriver.width, ((numColMuxed > 1)==true? (muxDecoder.width):0) ) + widthArray;
 				area = height * width;
 				usedArea = areaArray + ((cell.writeVoltage > 1.5)==true? (wllevelshifter.area + bllevelshifter.area + sllevelshifter.area):0) + wlDecoder.area + wlDecoderDriver.area + wlNewDecoderDriver.area + slSwitchMatrix.area + 
 							((numColMuxed > 1)==true? (mux.area + muxDecoder.area):0) + multilevelSenseAmp.area + multilevelSAEncoder.area + adder.area + dff.area + shiftAddInput.area + shiftAddWeight.area + sarADC.area;
+				if (numRow > 1 && param->useObfuscation) {
+					usedArea += inputMux.area;
+				}
 				emptyArea = area - usedArea;
 				
 				areaADC = multilevelSenseAmp.area + multilevelSAEncoder.area + sarADC.area;
 				areaAccum = adder.area + dff.area + shiftAddInput.area + shiftAddWeight.area;
 				areaOther = ((cell.writeVoltage > 1.5)==true? (wllevelshifter.area + bllevelshifter.area + sllevelshifter.area):0) + wlDecoder.area + wlNewDecoderDriver.area + wlDecoderDriver.area + slSwitchMatrix.area + ((numColMuxed > 1)==true? (mux.area + muxDecoder.area):0);
+				if (numRow > 1 && param->useObfuscation) {
+					areaOther += inputMux.area;
+				}
 			} else if (conventionalParallel) { 
 				if (cell.accessType == CMOS_access) {
 					wlNewSwitchMatrix.CalculateArea(heightArray, NULL, NONE);
@@ -732,6 +754,10 @@ void SubArray::CalculateArea() {  //calculate layout area for total design
 					muxDecoder.CalculateArea(NULL, NULL, NONE);
 					double minMuxHeight = MAX(muxDecoder.height, mux.height);
 					mux.CalculateArea(minMuxHeight, widthArray, OVERRIDE);
+				}
+				if (numRow > 1 && param->useObfuscation) {
+					printf("SubArray.cpp inputMux calculate area 2");
+					inputMux.CalculateArea(heightArray, NULL, NONE);
 				}
 				if (SARADC) {
 					sarADC.CalculateUnitArea();
@@ -765,13 +791,22 @@ void SubArray::CalculateArea() {  //calculate layout area for total design
 				
 				height = ((cell.writeVoltage > 1.5)==true? (sllevelshifter.height):0) + slSwitchMatrix.height + heightArray + ((numColMuxed > 1)==true? (mux.height):0) + \
 						multilevelSenseAmp.height + multilevelSAEncoder.height + shiftAddWeight.height + shiftAddInput.height + ((numAdd > 1)==true? (adder.height+dff.height):0) + sarADC.height;
+				if (numRow > 1 && param->useObfuscation) {
+					height += inputMux.height;
+				}
 				width = MAX( ((cell.writeVoltage > 1.5)==true? (wllevelshifter.width + bllevelshifter.width):0) + wlNewSwitchMatrix.width + wlSwitchMatrix.width, ((numColMuxed > 1)==true? (muxDecoder.width):0)) + widthArray + bufferarea/lengthCol; // added;
 				usedArea = areaArray + ((cell.writeVoltage > 1.5)==true? (wllevelshifter.area + bllevelshifter.area + sllevelshifter.area):0) + wlSwitchMatrix.area + wlNewSwitchMatrix.area + slSwitchMatrix.area + 
 							((numColMuxed > 1)==true? (mux.area + muxDecoder.area):0) + multilevelSenseAmp.area  + multilevelSAEncoder.area + shiftAddWeight.area + shiftAddInput.area + ((numAdd > 1)==true? (adder.area+dff.area):0) + sarADC.area + bufferarea;
+				if (numRow > 1 && param->useObfuscation) {
+					usedArea += inputMux.area;
+				}
 				
 				areaADC = multilevelSenseAmp.area + multilevelSAEncoder.area + sarADC.area;
 				areaAccum = shiftAddWeight.area + shiftAddInput.area + ((numAdd > 1)==true? (adder.area+dff.area):0);
 				areaOther = ((cell.writeVoltage > 1.5)==true? (wllevelshifter.area + bllevelshifter.area + sllevelshifter.area):0) + wlNewSwitchMatrix.area + wlSwitchMatrix.area + slSwitchMatrix.area + ((numColMuxed > 1)==true? (mux.area + muxDecoder.area):0) + bufferarea;
+				if (numRow > 1 && param->useObfuscation) {
+					areaOther += inputMux.area;
+				}
 				
 				area = height * width;				
 				emptyArea = area - usedArea;
@@ -1170,6 +1205,14 @@ void SubArray::CalculateLatency(double columnRes, const vector<double> &columnRe
 						// 1.4 update
 						muxDecoder.CalculateLatency(1e20, mux.capTgGateN*ceil(numCol/numColMuxed), mux.capTgGateP*ceil(numCol/numColMuxed), 0, 0, 1, 0);
 					}
+					if (numRow> 1 && param->useObfuscation) {
+						printf("SubArray.cpp inputMux calculate latency 1\n");
+						if (cell.accessType == CMOS_access) {
+							inputMux.CalculateLatency(0, capRow2, 1); // 1T1R
+						} else {
+							inputMux.CalculateLatency(0, capRow1, 1); // Crosspoint
+						}
+					}
 					if (SARADC) {
 						sarADC.CalculateLatency(1);
 					} else {
@@ -1179,7 +1222,7 @@ void SubArray::CalculateLatency(double columnRes, const vector<double> &columnRe
 						}
 					}					
 					if (CalculateclkFreq) {
-						readLatency += MAX(wlDecoder.readLatency + wlNewDecoderDriver.readLatency + wlDecoderDriver.readLatency, ((numColMuxed > 1)==true? (mux.readLatency+muxDecoder.readLatency):0));
+						readLatency += MAX(wlDecoder.readLatency + wlNewDecoderDriver.readLatency + wlDecoderDriver.readLatency + ((numRow> 1 && param->useObfuscation)? inputMux.readLatency : 0), ((numColMuxed > 1)==true? (mux.readLatency+muxDecoder.readLatency):0));
 						readLatency += colDelay;
 						readLatency += multilevelSenseAmp.readLatency;
 						readLatency += multilevelSAEncoder.readLatency;
@@ -1210,7 +1253,7 @@ void SubArray::CalculateLatency(double columnRes, const vector<double> &columnRe
 						} 
 					} else {
 						readLatencyADC = (multilevelSenseAmp.readLatency + multilevelSAEncoder.readLatency + sarADC.readLatency + colDelay) * (numRow*activityRowRead*numColMuxed) * (validated==true? param->beta : 1);
-						readLatencyOther = MAX((wlDecoder.readLatency + wlNewDecoderDriver.readLatency + wlDecoderDriver.readLatency)*numRow*activityRowRead, ((numColMuxed > 1)==true? (mux.readLatency+muxDecoder.readLatency):0)) * numColMuxed * (validated==true? param->beta : 1);
+						readLatencyOther = MAX((wlDecoder.readLatency + wlNewDecoderDriver.readLatency + wlDecoderDriver.readLatency + ((numRow> 1 && param->useObfuscation)? inputMux.readLatency : 0))*numRow*activityRowRead, ((numColMuxed > 1)==true? (mux.readLatency+muxDecoder.readLatency):0)) * numColMuxed * (validated==true? param->beta : 1);
 						// Anni update: hide readLatencyAccum by pipeline
 						readLatencyAccum = MAX(adder.readLatency * numColMuxed*(numRow*activityRowRead-1) + shiftAddWeight.adder.readLatency * (numCellPerSynapse-1)*ceil(numColMuxed/numCellPerSynapse) + \
 											shiftAddInput.adder.readLatency * ceil(numColMuxed/numCellPerSynapse) - readLatencyADC - readLatencyOther, 0);
@@ -1283,6 +1326,14 @@ void SubArray::CalculateLatency(double columnRes, const vector<double> &columnRe
 						// 1.4 update
 						muxDecoder.CalculateLatency(1e20, mux.capTgGateN*ceil(numCol/numColMuxed), mux.capTgGateP*ceil(numCol/numColMuxed), 0, 0, 1, 0);
 					}
+					if (numRow> 1 && param->useObfuscation) {
+						printf("SubArray.cpp inputMux calculate latency 1\n");
+						if (cell.accessType == CMOS_access) {
+							inputMux.CalculateLatency(0, capRow2, 1); // 1T1R
+						} else {
+							inputMux.CalculateLatency(0, capRow1, 1); // Crosspoint
+						}
+					}
 					if (SARADC) {
 						sarADC.CalculateLatency(1);
 					} else {
@@ -1291,13 +1342,13 @@ void SubArray::CalculateLatency(double columnRes, const vector<double> &columnRe
 					}				
 					if (CalculateclkFreq) {
 						// 1.4 update - updated
-						readLatency += MAX(wlNewSwitchMatrix.readLatency + wlSwitchMatrix.readLatency + bufferlatency, ((numColMuxed > 1)==true? (mux.readLatency+muxDecoder.readLatency):0));
+						readLatency += MAX(wlNewSwitchMatrix.readLatency + wlSwitchMatrix.readLatency + bufferlatency + ((numRow> 1 && param->useObfuscation)? inputMux.readLatency : 0), ((numColMuxed > 1)==true? (mux.readLatency+muxDecoder.readLatency):0));
 						// readLatency += colDelay;
 						readLatency += multilevelSenseAmp.readLatency;
 						readLatency += multilevelSAEncoder.readLatency;
 						readLatency += sarADC.readLatency;
 						readLatency *= (validated==true? param->beta : 1);	// latency factor of sensing cycle, beta = 1.4 by default									
-						param->rowdelay = wlNewSwitchMatrix.readLatency + wlSwitchMatrix.readLatency + bufferlatency;
+						param->rowdelay = wlNewSwitchMatrix.readLatency + wlSwitchMatrix.readLatency + bufferlatency + ((numRow> 1 && param->useObfuscation)? inputMux.readLatency : 0);
 						param->muxdelay = mux.readLatency+muxDecoder.readLatency;
 						param->ADClatency = multilevelSenseAmp.readLatency;					
 					
@@ -1330,7 +1381,7 @@ void SubArray::CalculateLatency(double columnRes, const vector<double> &columnRe
 						} 
 					} else {
 						readLatencyADC = (multilevelSenseAmp.readLatency + multilevelSAEncoder.readLatency + sarADC.readLatency + colDelay) * numColMuxed * (validated==true? param->beta : 1) * numAdd;
-						readLatencyOther = MAX((wlNewSwitchMatrix.readLatency + wlSwitchMatrix.readLatency) * numAdd, ((numColMuxed > 1)==true? (mux.readLatency+muxDecoder.readLatency):0)) * numColMuxed * (validated==true? param->beta : 1);
+						readLatencyOther = MAX((wlNewSwitchMatrix.readLatency + wlSwitchMatrix.readLatency + ((numRow> 1 && param->useObfuscation)? inputMux.readLatency : 0)) * numAdd, ((numColMuxed > 1)==true? (mux.readLatency+muxDecoder.readLatency):0)) * numColMuxed * (validated==true? param->beta : 1);
 						// Anni update: hide readLatencyAccum by pipeline
 						readLatencyAccum = MAX(adder.readLatency * numColMuxed*(numAdd-1) + shiftAddWeight.adder.readLatency * (numCellPerSynapse-1)*ceil(numColMuxed/numCellPerSynapse) + \
 											shiftAddInput.adder.readLatency * ceil(numColMuxed/numCellPerSynapse) - readLatencyADC - readLatencyOther, 0);
@@ -1741,6 +1792,9 @@ void SubArray::CalculatePower(const vector<double> &columnResistance) {
 					mux.CalculatePower(numColMuxed);	// Mux still consumes energy during row-by-row read
 					muxDecoder.CalculatePower(numColMuxed, 1);
 				}
+				if (numRow >1 && param->useObfuscation) {
+					inputMux.CalculatePower(numRow*activityRowRead*numColMuxed);
+				}
 
 				if (SARADC) {
 					sarADC.CalculatePower(columnResistance, numRow*activityRowRead);
@@ -1770,6 +1824,7 @@ void SubArray::CalculatePower(const vector<double> &columnResistance) {
 				readDynamicEnergy += wlNewDecoderDriver.readDynamicEnergy;
 				readDynamicEnergy += wlDecoderDriver.readDynamicEnergy;
 				readDynamicEnergy += ((numColMuxed > 1)==true? (mux.readDynamicEnergy + muxDecoder.readDynamicEnergy):0);
+				readDynamicEnergy += (numRow >1 && param->useObfuscation)? inputMux.readDynamicEnergy : 0;
 				readDynamicEnergy += adder.readDynamicEnergy;
 				readDynamicEnergy += dff.readDynamicEnergy;
 				readDynamicEnergy += shiftAddWeight.readDynamicEnergy + shiftAddInput.readDynamicEnergy;
@@ -1779,7 +1834,7 @@ void SubArray::CalculatePower(const vector<double> &columnResistance) {
 				
 				readDynamicEnergyADC = readDynamicEnergyArray + multilevelSenseAmp.readDynamicEnergy + multilevelSAEncoder.readDynamicEnergy + sarADC.readDynamicEnergy;
 				readDynamicEnergyAccum = adder.readDynamicEnergy + dff.readDynamicEnergy + shiftAddWeight.readDynamicEnergy + shiftAddInput.readDynamicEnergy;
-				readDynamicEnergyOther = wlDecoder.readDynamicEnergy + wlNewDecoderDriver.readDynamicEnergy + wlDecoderDriver.readDynamicEnergy + ((numColMuxed > 1)==true? (mux.readDynamicEnergy + muxDecoder.readDynamicEnergy):0);
+				readDynamicEnergyOther = wlDecoder.readDynamicEnergy + wlNewDecoderDriver.readDynamicEnergy + wlDecoderDriver.readDynamicEnergy + ((numColMuxed > 1)==true? (mux.readDynamicEnergy + muxDecoder.readDynamicEnergy):0) + (numRow >1 && param->useObfuscation? inputMux.readDynamicEnergy : 0);
 
 				// Write					
 				// writeDynamicEnergyArray = writeDynamicEnergyArray;
@@ -1804,6 +1859,7 @@ void SubArray::CalculatePower(const vector<double> &columnResistance) {
 				leakage += slSwitchMatrix.leakage;
 				leakage += ((numColMuxed > 1)==true? (mux.leakage):0);
 				leakage += ((numColMuxed > 1)==true? (muxDecoder.leakage):0);
+				leakage += (numRow >1 && param->useObfuscation)? inputMux.leakage : 0;
 				leakage += multilevelSenseAmp.leakage;
 				leakage += multilevelSAEncoder.leakage;
 				leakage += dff.leakage;
@@ -1828,6 +1884,9 @@ void SubArray::CalculatePower(const vector<double> &columnResistance) {
 				if (numColMuxed > 1) {
 					mux.CalculatePower(numColMuxed);	// Mux still consumes energy during row-by-row read
 					muxDecoder.CalculatePower(numColMuxed, 1);
+				}
+				if (numRow > 1 && param->useObfuscation) {
+					inputMux.CalculatePower(numRow*activityRowRead*numColMuxed);
 				}
 				// Anni update: numAdd
 				if (SARADC) {
@@ -1862,6 +1921,7 @@ void SubArray::CalculatePower(const vector<double> &columnResistance) {
 				readDynamicEnergy += adder.readDynamicEnergy;
 				readDynamicEnergy += dff.readDynamicEnergy;
 				readDynamicEnergy += ((numColMuxed > 1)==true? (mux.readDynamicEnergy + muxDecoder.readDynamicEnergy):0);
+				readDynamicEnergy += (numRow >1 && param->useObfuscation)? inputMux.readDynamicEnergy : 0;
 				readDynamicEnergy += multilevelSenseAmp.readDynamicEnergy;
 				readDynamicEnergy += multilevelSAEncoder.readDynamicEnergy;
 				readDynamicEnergy += shiftAddWeight.readDynamicEnergy + shiftAddInput.readDynamicEnergy;
@@ -1871,7 +1931,7 @@ void SubArray::CalculatePower(const vector<double> &columnResistance) {
 				readDynamicEnergyADC = readDynamicEnergyArray + multilevelSenseAmp.readDynamicEnergy + multilevelSAEncoder.readDynamicEnergy + sarADC.readDynamicEnergy;
 				// Anni update: accum, other
 				readDynamicEnergyAccum = shiftAddWeight.readDynamicEnergy + shiftAddInput.readDynamicEnergy + adder.readDynamicEnergy + dff.readDynamicEnergy;				
-				readDynamicEnergyOther = wlNewSwitchMatrix.readDynamicEnergy + wlSwitchMatrix.readDynamicEnergy + ((numColMuxed > 1)==true? (mux.readDynamicEnergy + muxDecoder.readDynamicEnergy):0);
+				readDynamicEnergyOther = wlNewSwitchMatrix.readDynamicEnergy + wlSwitchMatrix.readDynamicEnergy + ((numColMuxed > 1)==true? (mux.readDynamicEnergy + muxDecoder.readDynamicEnergy):0) + (numRow >1 && param->useObfuscation? inputMux.readDynamicEnergy : 0);
 				
 				// Write				
 				// writeDynamicEnergyArray = writeDynamicEnergyArray;
@@ -1897,6 +1957,7 @@ void SubArray::CalculatePower(const vector<double> &columnResistance) {
 				leakage += slSwitchMatrix.leakage;
 				leakage += ((numColMuxed > 1)==true? (mux.leakage):0);
 				leakage += ((numColMuxed > 1)==true? (muxDecoder.leakage):0);
+				leakage += (numRow > 1 && param->useObfuscation)? inputMux.leakage : 0;
 				leakage += multilevelSenseAmp.leakage;
 				leakage += multilevelSAEncoder.leakage;
 				leakage += shiftAddWeight.leakage + shiftAddInput.leakage;
@@ -2125,6 +2186,7 @@ void SubArray::PrintProperty() {
 			slSwitchMatrix.PrintProperty("slSwitchMatrix");
 			mux.PrintProperty("mux");
 			muxDecoder.PrintProperty("muxDecoder");
+			inputMux.PrintProperty("inputMux");
 			multilevelSenseAmp.PrintProperty("multilevelSenseAmp or single-bit SenseAmp");
 			multilevelSAEncoder.PrintProperty("multilevelSAEncoder");
 			adder.PrintProperty("adder");
@@ -2142,6 +2204,7 @@ void SubArray::PrintProperty() {
 			slSwitchMatrix.PrintProperty("slSwitchMatrix");
 			mux.PrintProperty("mux");
 			muxDecoder.PrintProperty("muxDecoder");
+			inputMux.PrintProperty("inputMux");
 			multilevelSenseAmp.PrintProperty("multilevelSenseAmp");
 			multilevelSAEncoder.PrintProperty("multilevelSAEncoder");
 			if (numReadPulse > 1) {
